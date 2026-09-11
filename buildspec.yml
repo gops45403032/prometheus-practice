@@ -5,7 +5,7 @@ phases:
     commands:
       - echo Logging in to ECR...
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO_URI
-      - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:-latest}
+      - export IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:-latest}
       - echo Using image tag $IMAGE_TAG
 
   build:
@@ -23,19 +23,7 @@ phases:
       - aws ecs describe-task-definition --task-definition $TASK_DEF_ARN --query 'taskDefinition' > task-def.json
 
       - echo Swapping in the new image...
-      - >
-        NEW_TASK_DEF=$(python3 -c "
-        import json
-        with open('task-def.json') as f:
-            td = json.load(f)
-        for c in td['containerDefinitions']:
-            if c['name'] == '$CONTAINER_NAME':
-                c['image'] = '$ECR_REPO_URI:$IMAGE_TAG'
-        for key in ['taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy']:
-            td.pop(key, None)
-        print(json.dumps(td))
-        ")
-      - echo "$NEW_TASK_DEF" > new-task-def.json
+      - python3 scripts/swap-image.py > new-task-def.json
 
       - echo Registering new task definition revision...
       - NEW_TASK_DEF_ARN=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json --query 'taskDefinition.taskDefinitionArn' --output text)
