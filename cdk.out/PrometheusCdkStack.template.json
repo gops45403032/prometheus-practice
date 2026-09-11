@@ -1,0 +1,1643 @@
+{
+ "Description": "Prometheus Group take-home, practice build: HA 2-AZ web app on ECS-alternative EC2 ASG + ALB + RDS, sized for the AWS Free Tier.",
+ "Resources": {
+  "PrometheusVpcDFC7D778": {
+   "Type": "AWS::EC2::VPC",
+   "Properties": {
+    "CidrBlock": "10.0.0.0/16",
+    "EnableDnsHostnames": true,
+    "EnableDnsSupport": true,
+    "InstanceTenancy": "default",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "PrometheusCdkStack/PrometheusVpc"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/Resource"
+   }
+  },
+  "PrometheusVpcpublicSubnet1SubnetEB3C1B42": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": {
+     "Fn::Select": [
+      0,
+      {
+       "Fn::GetAZs": ""
+      }
+     ]
+    },
+    "CidrBlock": "10.0.0.0/24",
+    "MapPublicIpOnLaunch": true,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "public"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Public"
+     },
+     {
+      "Key": "Name",
+      "Value": "PrometheusCdkStack/PrometheusVpc/publicSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "PrometheusVpcDFC7D778"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/publicSubnet1/Subnet"
+   }
+  },
+  "PrometheusVpcpublicSubnet1RouteTable27CB0602": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "PrometheusCdkStack/PrometheusVpc/publicSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "PrometheusVpcDFC7D778"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/publicSubnet1/RouteTable"
+   }
+  },
+  "PrometheusVpcpublicSubnet1RouteTableAssociation804BB134": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "PrometheusVpcpublicSubnet1RouteTable27CB0602"
+    },
+    "SubnetId": {
+     "Ref": "PrometheusVpcpublicSubnet1SubnetEB3C1B42"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/publicSubnet1/RouteTableAssociation"
+   }
+  },
+  "PrometheusVpcpublicSubnet1DefaultRouteAC53BC43": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "Ref": "PrometheusVpcIGWD0FE2594"
+    },
+    "RouteTableId": {
+     "Ref": "PrometheusVpcpublicSubnet1RouteTable27CB0602"
+    }
+   },
+   "DependsOn": [
+    "PrometheusVpcVPCGWC5FCB146"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/publicSubnet1/DefaultRoute"
+   }
+  },
+  "PrometheusVpcpublicSubnet1EIP58984DAC": {
+   "Type": "AWS::EC2::EIP",
+   "Properties": {
+    "Domain": "vpc",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "PrometheusCdkStack/PrometheusVpc/publicSubnet1"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/publicSubnet1/EIP"
+   }
+  },
+  "PrometheusVpcpublicSubnet1NATGatewayFDEBCD25": {
+   "Type": "AWS::EC2::NatGateway",
+   "Properties": {
+    "AllocationId": {
+     "Fn::GetAtt": [
+      "PrometheusVpcpublicSubnet1EIP58984DAC",
+      "AllocationId"
+     ]
+    },
+    "SubnetId": {
+     "Ref": "PrometheusVpcpublicSubnet1SubnetEB3C1B42"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "PrometheusCdkStack/PrometheusVpc/publicSubnet1"
+     }
+    ]
+   },
+   "DependsOn": [
+    "PrometheusVpcpublicSubnet1DefaultRouteAC53BC43",
+    "PrometheusVpcpublicSubnet1RouteTableAssociation804BB134"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/publicSubnet1/NATGateway"
+   }
+  },
+  "PrometheusVpcpublicSubnet2Subnet37C308E5": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": {
+     "Fn::Select": [
+      1,
+      {
+       "Fn::GetAZs": ""
+      }
+     ]
+    },
+    "CidrBlock": "10.0.1.0/24",
+    "MapPublicIpOnLaunch": true,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "public"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Public"
+     },
+     {
+      "Key": "Name",
+      "Value": "PrometheusCdkStack/PrometheusVpc/publicSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "PrometheusVpcDFC7D778"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/publicSubnet2/Subnet"
+   }
+  },
+  "PrometheusVpcpublicSubnet2RouteTableE9BBD7FB": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "PrometheusCdkStack/PrometheusVpc/publicSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "PrometheusVpcDFC7D778"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/publicSubnet2/RouteTable"
+   }
+  },
+  "PrometheusVpcpublicSubnet2RouteTableAssociationC0C4916A": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "PrometheusVpcpublicSubnet2RouteTableE9BBD7FB"
+    },
+    "SubnetId": {
+     "Ref": "PrometheusVpcpublicSubnet2Subnet37C308E5"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/publicSubnet2/RouteTableAssociation"
+   }
+  },
+  "PrometheusVpcpublicSubnet2DefaultRouteB59D6AFB": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "Ref": "PrometheusVpcIGWD0FE2594"
+    },
+    "RouteTableId": {
+     "Ref": "PrometheusVpcpublicSubnet2RouteTableE9BBD7FB"
+    }
+   },
+   "DependsOn": [
+    "PrometheusVpcVPCGWC5FCB146"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/publicSubnet2/DefaultRoute"
+   }
+  },
+  "PrometheusVpcappprivateSubnet1Subnet4CB10539": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": {
+     "Fn::Select": [
+      0,
+      {
+       "Fn::GetAZs": ""
+      }
+     ]
+    },
+    "CidrBlock": "10.0.2.0/24",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "app-private"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Private"
+     },
+     {
+      "Key": "Name",
+      "Value": "PrometheusCdkStack/PrometheusVpc/app-privateSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "PrometheusVpcDFC7D778"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/app-privateSubnet1/Subnet"
+   }
+  },
+  "PrometheusVpcappprivateSubnet1RouteTable20E865B8": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "PrometheusCdkStack/PrometheusVpc/app-privateSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "PrometheusVpcDFC7D778"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/app-privateSubnet1/RouteTable"
+   }
+  },
+  "PrometheusVpcappprivateSubnet1RouteTableAssociation04E48BC3": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "PrometheusVpcappprivateSubnet1RouteTable20E865B8"
+    },
+    "SubnetId": {
+     "Ref": "PrometheusVpcappprivateSubnet1Subnet4CB10539"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/app-privateSubnet1/RouteTableAssociation"
+   }
+  },
+  "PrometheusVpcappprivateSubnet1DefaultRoute0D907278": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "Ref": "PrometheusVpcpublicSubnet1NATGatewayFDEBCD25"
+    },
+    "RouteTableId": {
+     "Ref": "PrometheusVpcappprivateSubnet1RouteTable20E865B8"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/app-privateSubnet1/DefaultRoute"
+   }
+  },
+  "PrometheusVpcappprivateSubnet2Subnet93668C1E": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": {
+     "Fn::Select": [
+      1,
+      {
+       "Fn::GetAZs": ""
+      }
+     ]
+    },
+    "CidrBlock": "10.0.3.0/24",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "app-private"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Private"
+     },
+     {
+      "Key": "Name",
+      "Value": "PrometheusCdkStack/PrometheusVpc/app-privateSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "PrometheusVpcDFC7D778"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/app-privateSubnet2/Subnet"
+   }
+  },
+  "PrometheusVpcappprivateSubnet2RouteTableD84FF5DD": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "PrometheusCdkStack/PrometheusVpc/app-privateSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "PrometheusVpcDFC7D778"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/app-privateSubnet2/RouteTable"
+   }
+  },
+  "PrometheusVpcappprivateSubnet2RouteTableAssociationD353A047": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "PrometheusVpcappprivateSubnet2RouteTableD84FF5DD"
+    },
+    "SubnetId": {
+     "Ref": "PrometheusVpcappprivateSubnet2Subnet93668C1E"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/app-privateSubnet2/RouteTableAssociation"
+   }
+  },
+  "PrometheusVpcappprivateSubnet2DefaultRoute52D92CBF": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "Ref": "PrometheusVpcpublicSubnet1NATGatewayFDEBCD25"
+    },
+    "RouteTableId": {
+     "Ref": "PrometheusVpcappprivateSubnet2RouteTableD84FF5DD"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/app-privateSubnet2/DefaultRoute"
+   }
+  },
+  "PrometheusVpcdataisolatedSubnet1Subnet67DDB20B": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": {
+     "Fn::Select": [
+      0,
+      {
+       "Fn::GetAZs": ""
+      }
+     ]
+    },
+    "CidrBlock": "10.0.4.0/24",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "data-isolated"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Isolated"
+     },
+     {
+      "Key": "Name",
+      "Value": "PrometheusCdkStack/PrometheusVpc/data-isolatedSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "PrometheusVpcDFC7D778"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/data-isolatedSubnet1/Subnet"
+   }
+  },
+  "PrometheusVpcdataisolatedSubnet1RouteTableA5F024EC": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "PrometheusCdkStack/PrometheusVpc/data-isolatedSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "PrometheusVpcDFC7D778"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/data-isolatedSubnet1/RouteTable"
+   }
+  },
+  "PrometheusVpcdataisolatedSubnet1RouteTableAssociation84281C79": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "PrometheusVpcdataisolatedSubnet1RouteTableA5F024EC"
+    },
+    "SubnetId": {
+     "Ref": "PrometheusVpcdataisolatedSubnet1Subnet67DDB20B"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/data-isolatedSubnet1/RouteTableAssociation"
+   }
+  },
+  "PrometheusVpcdataisolatedSubnet2Subnet8A741E76": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": {
+     "Fn::Select": [
+      1,
+      {
+       "Fn::GetAZs": ""
+      }
+     ]
+    },
+    "CidrBlock": "10.0.5.0/24",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "data-isolated"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Isolated"
+     },
+     {
+      "Key": "Name",
+      "Value": "PrometheusCdkStack/PrometheusVpc/data-isolatedSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "PrometheusVpcDFC7D778"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/data-isolatedSubnet2/Subnet"
+   }
+  },
+  "PrometheusVpcdataisolatedSubnet2RouteTable43664EC5": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "PrometheusCdkStack/PrometheusVpc/data-isolatedSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "PrometheusVpcDFC7D778"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/data-isolatedSubnet2/RouteTable"
+   }
+  },
+  "PrometheusVpcdataisolatedSubnet2RouteTableAssociation97A66745": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "PrometheusVpcdataisolatedSubnet2RouteTable43664EC5"
+    },
+    "SubnetId": {
+     "Ref": "PrometheusVpcdataisolatedSubnet2Subnet8A741E76"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/data-isolatedSubnet2/RouteTableAssociation"
+   }
+  },
+  "PrometheusVpcIGWD0FE2594": {
+   "Type": "AWS::EC2::InternetGateway",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "PrometheusCdkStack/PrometheusVpc"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/IGW"
+   }
+  },
+  "PrometheusVpcVPCGWC5FCB146": {
+   "Type": "AWS::EC2::VPCGatewayAttachment",
+   "Properties": {
+    "InternetGatewayId": {
+     "Ref": "PrometheusVpcIGWD0FE2594"
+    },
+    "VpcId": {
+     "Ref": "PrometheusVpcDFC7D778"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/PrometheusVpc/VPCGW"
+   }
+  },
+  "AlbSg1155C1BE": {
+   "Type": "AWS::EC2::SecurityGroup",
+   "Properties": {
+    "GroupDescription": "ALB: HTTP from my IP only",
+    "SecurityGroupEgress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow all outbound traffic by default",
+      "IpProtocol": "-1"
+     }
+    ],
+    "SecurityGroupIngress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "HTTP from my IP",
+      "FromPort": 80,
+      "IpProtocol": "tcp",
+      "ToPort": 80
+     }
+    ],
+    "VpcId": {
+     "Ref": "PrometheusVpcDFC7D778"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/AlbSg/Resource"
+   }
+  },
+  "AppSg898BCA4E": {
+   "Type": "AWS::EC2::SecurityGroup",
+   "Properties": {
+    "GroupDescription": "App tier (Fargate tasks): only reachable from the ALB",
+    "SecurityGroupEgress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow all outbound traffic by default",
+      "IpProtocol": "-1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "PrometheusVpcDFC7D778"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/AppSg/Resource"
+   }
+  },
+  "AppSgfromPrometheusCdkStackAlbSg8F0F58B580A90ED545": {
+   "Type": "AWS::EC2::SecurityGroupIngress",
+   "Properties": {
+    "Description": "HTTP from ALB only",
+    "FromPort": 80,
+    "GroupId": {
+     "Fn::GetAtt": [
+      "AppSg898BCA4E",
+      "GroupId"
+     ]
+    },
+    "IpProtocol": "tcp",
+    "SourceSecurityGroupId": {
+     "Fn::GetAtt": [
+      "AlbSg1155C1BE",
+      "GroupId"
+     ]
+    },
+    "ToPort": 80
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/AppSg/from PrometheusCdkStackAlbSg8F0F58B5:80"
+   }
+  },
+  "DbSg495F8305": {
+   "Type": "AWS::EC2::SecurityGroup",
+   "Properties": {
+    "GroupDescription": "DB tier: only reachable from the app tier",
+    "SecurityGroupEgress": [
+     {
+      "CidrIp": "255.255.255.255/32",
+      "Description": "Disallow all traffic",
+      "FromPort": 252,
+      "IpProtocol": "icmp",
+      "ToPort": 86
+     }
+    ],
+    "VpcId": {
+     "Ref": "PrometheusVpcDFC7D778"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/DbSg/Resource"
+   }
+  },
+  "DbSgfromPrometheusCdkStackAppSg48B7185D33065FCD88BB": {
+   "Type": "AWS::EC2::SecurityGroupIngress",
+   "Properties": {
+    "Description": "MySQL from app tier only",
+    "FromPort": 3306,
+    "GroupId": {
+     "Fn::GetAtt": [
+      "DbSg495F8305",
+      "GroupId"
+     ]
+    },
+    "IpProtocol": "tcp",
+    "SourceSecurityGroupId": {
+     "Fn::GetAtt": [
+      "AppSg898BCA4E",
+      "GroupId"
+     ]
+    },
+    "ToPort": 3306
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/DbSg/from PrometheusCdkStackAppSg48B7185D:3306"
+   }
+  },
+  "AppCluster99B78AC1": {
+   "Type": "AWS::ECS::Cluster",
+   "Properties": {
+    "ClusterSettings": [
+     {
+      "Name": "containerInsights",
+      "Value": "enabled"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/AppCluster/Resource"
+   }
+  },
+  "TaskExecutionRole250D2532": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/TaskExecutionRole/Resource"
+   }
+  },
+  "TaskExecutionRoleDefaultPolicyA84DD1B0": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "AppLogGroup7D8CD952",
+         "Arn"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "TaskExecutionRoleDefaultPolicyA84DD1B0",
+    "Roles": [
+     {
+      "Ref": "TaskExecutionRole250D2532"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/TaskExecutionRole/DefaultPolicy/Resource"
+   }
+  },
+  "TaskRole30FC0FBB": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/TaskRole/Resource"
+   }
+  },
+  "AppLogGroup7D8CD952": {
+   "Type": "AWS::Logs::LogGroup",
+   "Properties": {
+    "RetentionInDays": 3
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/AppLogGroup/Resource"
+   }
+  },
+  "AppTaskDef32F3E122": {
+   "Type": "AWS::ECS::TaskDefinition",
+   "Properties": {
+    "ContainerDefinitions": [
+     {
+      "Essential": true,
+      "Image": "public.ecr.aws/nginx/nginx:latest",
+      "LogConfiguration": {
+       "LogDriver": "awslogs",
+       "Options": {
+        "awslogs-group": {
+         "Ref": "AppLogGroup7D8CD952"
+        },
+        "awslogs-stream-prefix": "app",
+        "awslogs-region": {
+         "Ref": "AWS::Region"
+        }
+       }
+      },
+      "Name": "AppContainer",
+      "PortMappings": [
+       {
+        "ContainerPort": 80,
+        "Protocol": "tcp"
+       }
+      ]
+     }
+    ],
+    "Cpu": "256",
+    "ExecutionRoleArn": {
+     "Fn::GetAtt": [
+      "TaskExecutionRole250D2532",
+      "Arn"
+     ]
+    },
+    "Family": "PrometheusCdkStackAppTaskDefDF14420C",
+    "Memory": "512",
+    "NetworkMode": "awsvpc",
+    "RequiresCompatibilities": [
+     "FARGATE"
+    ],
+    "TaskRoleArn": {
+     "Fn::GetAtt": [
+      "TaskRole30FC0FBB",
+      "Arn"
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/AppTaskDef/Resource"
+   }
+  },
+  "AppServiceA2F9036C": {
+   "Type": "AWS::ECS::Service",
+   "Properties": {
+    "Cluster": {
+     "Ref": "AppCluster99B78AC1"
+    },
+    "DeploymentConfiguration": {
+     "Alarms": {
+      "AlarmNames": [],
+      "Enable": false,
+      "Rollback": false
+     },
+     "MaximumPercent": 200,
+     "MinimumHealthyPercent": 100
+    },
+    "DesiredCount": 2,
+    "EnableECSManagedTags": false,
+    "HealthCheckGracePeriodSeconds": 60,
+    "LaunchType": "FARGATE",
+    "LoadBalancers": [
+     {
+      "ContainerName": "AppContainer",
+      "ContainerPort": 80,
+      "TargetGroupArn": {
+       "Ref": "AppAlbHttpListenerAppTargetsGroup93D89AA4"
+      }
+     }
+    ],
+    "NetworkConfiguration": {
+     "AwsvpcConfiguration": {
+      "AssignPublicIp": "DISABLED",
+      "SecurityGroups": [
+       {
+        "Fn::GetAtt": [
+         "AppSg898BCA4E",
+         "GroupId"
+        ]
+       }
+      ],
+      "Subnets": [
+       {
+        "Ref": "PrometheusVpcappprivateSubnet1Subnet4CB10539"
+       },
+       {
+        "Ref": "PrometheusVpcappprivateSubnet2Subnet93668C1E"
+       }
+      ]
+     }
+    },
+    "TaskDefinition": {
+     "Ref": "AppTaskDef32F3E122"
+    }
+   },
+   "DependsOn": [
+    "AppAlbHttpListenerAppTargetsGroup93D89AA4",
+    "AppAlbHttpListener779026C3",
+    "TaskRole30FC0FBB"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/AppService/Service"
+   }
+  },
+  "AppServiceTaskCountTarget8D11C093": {
+   "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+   "Properties": {
+    "MaxCapacity": 8,
+    "MinCapacity": 2,
+    "ResourceId": {
+     "Fn::Join": [
+      "",
+      [
+       "service/",
+       {
+        "Ref": "AppCluster99B78AC1"
+       },
+       "/",
+       {
+        "Fn::GetAtt": [
+         "AppServiceA2F9036C",
+         "Name"
+        ]
+       }
+      ]
+     ]
+    },
+    "RoleARN": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":iam::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService"
+      ]
+     ]
+    },
+    "ScalableDimension": "ecs:service:DesiredCount",
+    "ServiceNamespace": "ecs"
+   },
+   "DependsOn": [
+    "TaskRole30FC0FBB"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/AppService/TaskCount/Target/Resource"
+   }
+  },
+  "AppServiceTaskCountTargetCpuTargetTracking8A96B261": {
+   "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+   "Properties": {
+    "PolicyName": "PrometheusCdkStackAppServiceTaskCountTargetCpuTargetTrackingFFCAB314",
+    "PolicyType": "TargetTrackingScaling",
+    "ScalingTargetId": {
+     "Ref": "AppServiceTaskCountTarget8D11C093"
+    },
+    "TargetTrackingScalingPolicyConfiguration": {
+     "PredefinedMetricSpecification": {
+      "PredefinedMetricType": "ECSServiceAverageCPUUtilization"
+     },
+     "TargetValue": 50
+    }
+   },
+   "DependsOn": [
+    "TaskRole30FC0FBB"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/AppService/TaskCount/Target/CpuTargetTracking/Resource"
+   }
+  },
+  "AppAlb4274DE9C": {
+   "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+   "Properties": {
+    "LoadBalancerAttributes": [
+     {
+      "Key": "deletion_protection.enabled",
+      "Value": "false"
+     }
+    ],
+    "Scheme": "internet-facing",
+    "SecurityGroups": [
+     {
+      "Fn::GetAtt": [
+       "AlbSg1155C1BE",
+       "GroupId"
+      ]
+     }
+    ],
+    "Subnets": [
+     {
+      "Ref": "PrometheusVpcpublicSubnet1SubnetEB3C1B42"
+     },
+     {
+      "Ref": "PrometheusVpcpublicSubnet2Subnet37C308E5"
+     }
+    ],
+    "Type": "application"
+   },
+   "DependsOn": [
+    "PrometheusVpcpublicSubnet1DefaultRouteAC53BC43",
+    "PrometheusVpcpublicSubnet1RouteTableAssociation804BB134",
+    "PrometheusVpcpublicSubnet2DefaultRouteB59D6AFB",
+    "PrometheusVpcpublicSubnet2RouteTableAssociationC0C4916A"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/AppAlb/Resource"
+   }
+  },
+  "AppAlbHttpListener779026C3": {
+   "Type": "AWS::ElasticLoadBalancingV2::Listener",
+   "Properties": {
+    "DefaultActions": [
+     {
+      "TargetGroupArn": {
+       "Ref": "AppAlbHttpListenerAppTargetsGroup93D89AA4"
+      },
+      "Type": "forward"
+     }
+    ],
+    "LoadBalancerArn": {
+     "Ref": "AppAlb4274DE9C"
+    },
+    "Port": 80,
+    "Protocol": "HTTP"
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/AppAlb/HttpListener/Resource"
+   }
+  },
+  "AppAlbHttpListenerAppTargetsGroup93D89AA4": {
+   "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+   "Properties": {
+    "HealthCheckIntervalSeconds": 30,
+    "HealthCheckPath": "/",
+    "HealthCheckTimeoutSeconds": 5,
+    "HealthyThresholdCount": 2,
+    "Matcher": {
+     "HttpCode": "200"
+    },
+    "Port": 80,
+    "Protocol": "HTTP",
+    "TargetGroupAttributes": [
+     {
+      "Key": "deregistration_delay.timeout_seconds",
+      "Value": "30"
+     },
+     {
+      "Key": "stickiness.enabled",
+      "Value": "false"
+     }
+    ],
+    "TargetType": "ip",
+    "UnhealthyThresholdCount": 3,
+    "VpcId": {
+     "Ref": "PrometheusVpcDFC7D778"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/AppAlb/HttpListener/AppTargetsGroup/Resource"
+   }
+  },
+  "AppDbSubnetGroupA87069A8": {
+   "Type": "AWS::RDS::DBSubnetGroup",
+   "Properties": {
+    "DBSubnetGroupDescription": "Subnet group for AppDb database",
+    "SubnetIds": [
+     {
+      "Ref": "PrometheusVpcdataisolatedSubnet1Subnet67DDB20B"
+     },
+     {
+      "Ref": "PrometheusVpcdataisolatedSubnet2Subnet8A741E76"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/AppDb/SubnetGroup/Default"
+   }
+  },
+  "PrometheusCdkStackAppDbSecret2711D93D3fdaad7efa858a3daf9490cf0a702aeb": {
+   "Type": "AWS::SecretsManager::Secret",
+   "Properties": {
+    "Description": {
+     "Fn::Join": [
+      "",
+      [
+       "Generated by the CDK for stack: ",
+       {
+        "Ref": "AWS::StackName"
+       }
+      ]
+     ]
+    },
+    "GenerateSecretString": {
+     "ExcludeCharacters": " %+~`#$&*()|[]{}:;<>?!'/@\"\\",
+     "GenerateStringKey": "password",
+     "PasswordLength": 30,
+     "SecretStringTemplate": "{\"username\":\"appdbadmin\"}"
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/AppDb/Secret/Resource"
+   }
+  },
+  "AppDbSecretAttachment08BE4D66": {
+   "Type": "AWS::SecretsManager::SecretTargetAttachment",
+   "Properties": {
+    "SecretId": {
+     "Ref": "PrometheusCdkStackAppDbSecret2711D93D3fdaad7efa858a3daf9490cf0a702aeb"
+    },
+    "TargetId": {
+     "Ref": "AppDbAE2CA689"
+    },
+    "TargetType": "AWS::RDS::DBInstance"
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/AppDb/Secret/Attachment/Resource"
+   }
+  },
+  "AppDbAE2CA689": {
+   "Type": "AWS::RDS::DBInstance",
+   "Properties": {
+    "AllocatedStorage": "20",
+    "BackupRetentionPeriod": 1,
+    "CopyTagsToSnapshot": true,
+    "DBInstanceClass": "db.t3.micro",
+    "DBSubnetGroupName": {
+     "Ref": "AppDbSubnetGroupA87069A8"
+    },
+    "DeleteAutomatedBackups": true,
+    "DeletionProtection": false,
+    "Engine": "mysql",
+    "EngineVersion": "8.0",
+    "MasterUserPassword": {
+     "Fn::Join": [
+      "",
+      [
+       "{{resolve:secretsmanager:",
+       {
+        "Ref": "PrometheusCdkStackAppDbSecret2711D93D3fdaad7efa858a3daf9490cf0a702aeb"
+       },
+       ":SecretString:password::}}"
+      ]
+     ]
+    },
+    "MasterUsername": "appdbadmin",
+    "MultiAZ": false,
+    "PubliclyAccessible": false,
+    "StorageEncrypted": true,
+    "StorageType": "gp2",
+    "VPCSecurityGroups": [
+     {
+      "Fn::GetAtt": [
+       "DbSg495F8305",
+       "GroupId"
+      ]
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/AppDb/Resource"
+   }
+  },
+  "AlarmTopicD01E77F9": {
+   "Type": "AWS::SNS::Topic",
+   "Properties": {
+    "DisplayName": "Prometheus practice app alarms"
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/AlarmTopic/Resource"
+   }
+  },
+  "Alb5xxAlarm99BFF946": {
+   "Type": "AWS::CloudWatch::Alarm",
+   "Properties": {
+    "AlarmActions": [
+     {
+      "Ref": "AlarmTopicD01E77F9"
+     }
+    ],
+    "AlarmDescription": "ALB is returning 5xx errors",
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "Dimensions": [
+     {
+      "Name": "LoadBalancer",
+      "Value": {
+       "Fn::GetAtt": [
+        "AppAlb4274DE9C",
+        "LoadBalancerFullName"
+       ]
+      }
+     }
+    ],
+    "EvaluationPeriods": 1,
+    "MetricName": "HTTPCode_ELB_5XX_Count",
+    "Namespace": "AWS/ApplicationELB",
+    "Period": 60,
+    "Statistic": "Sum",
+    "Threshold": 5
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/Alb5xxAlarm/Resource"
+   }
+  },
+  "UnhealthyHostsAlarmE3387D4B": {
+   "Type": "AWS::CloudWatch::Alarm",
+   "Properties": {
+    "AlarmActions": [
+     {
+      "Ref": "AlarmTopicD01E77F9"
+     }
+    ],
+    "AlarmDescription": "One or more targets are failing health checks",
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "Dimensions": [
+     {
+      "Name": "LoadBalancer",
+      "Value": {
+       "Fn::Join": [
+        "",
+        [
+         {
+          "Fn::Select": [
+           1,
+           {
+            "Fn::Split": [
+             "/",
+             {
+              "Ref": "AppAlbHttpListener779026C3"
+             }
+            ]
+           }
+          ]
+         },
+         "/",
+         {
+          "Fn::Select": [
+           2,
+           {
+            "Fn::Split": [
+             "/",
+             {
+              "Ref": "AppAlbHttpListener779026C3"
+             }
+            ]
+           }
+          ]
+         },
+         "/",
+         {
+          "Fn::Select": [
+           3,
+           {
+            "Fn::Split": [
+             "/",
+             {
+              "Ref": "AppAlbHttpListener779026C3"
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       ]
+      }
+     },
+     {
+      "Name": "TargetGroup",
+      "Value": {
+       "Fn::GetAtt": [
+        "AppAlbHttpListenerAppTargetsGroup93D89AA4",
+        "TargetGroupFullName"
+       ]
+      }
+     }
+    ],
+    "EvaluationPeriods": 2,
+    "MetricName": "UnHealthyHostCount",
+    "Namespace": "AWS/ApplicationELB",
+    "Period": 60,
+    "Statistic": "Average",
+    "Threshold": 1
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/UnhealthyHostsAlarm/Resource"
+   }
+  },
+  "ServiceCpuAlarmFC7C43E2": {
+   "Type": "AWS::CloudWatch::Alarm",
+   "Properties": {
+    "AlarmActions": [
+     {
+      "Ref": "AlarmTopicD01E77F9"
+     }
+    ],
+    "AlarmDescription": "ECS service CPU sustained above 80%",
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "Dimensions": [
+     {
+      "Name": "ClusterName",
+      "Value": {
+       "Ref": "AppCluster99B78AC1"
+      }
+     },
+     {
+      "Name": "ServiceName",
+      "Value": {
+       "Fn::GetAtt": [
+        "AppServiceA2F9036C",
+        "Name"
+       ]
+      }
+     }
+    ],
+    "EvaluationPeriods": 3,
+    "MetricName": "CPUUtilization",
+    "Namespace": "AWS/ECS",
+    "Period": 300,
+    "Statistic": "Average",
+    "Threshold": 80
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/ServiceCpuAlarm/Resource"
+   }
+  },
+  "DbCpuAlarmF24BD102": {
+   "Type": "AWS::CloudWatch::Alarm",
+   "Properties": {
+    "AlarmActions": [
+     {
+      "Ref": "AlarmTopicD01E77F9"
+     }
+    ],
+    "AlarmDescription": "RDS CPU sustained above 80%",
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "Dimensions": [
+     {
+      "Name": "DBInstanceIdentifier",
+      "Value": {
+       "Ref": "AppDbAE2CA689"
+      }
+     }
+    ],
+    "EvaluationPeriods": 3,
+    "MetricName": "CPUUtilization",
+    "Namespace": "AWS/RDS",
+    "Period": 300,
+    "Statistic": "Average",
+    "Threshold": 80
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/DbCpuAlarm/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/31T227bMAz9lr4rWmqsH5DLVgQo1iAO+jrQMuuqUSRDpBIUgv59sBVf0oc98ejw8CKKKuTj01IuH+BKC1WfFkZXMpYM6iTgSn8jqkLGt1aJzbt922/EPlRGqzJUFrnjJnRwgfEIlcGJn7gVkVMaWDs7ijvwa7fvzB/gZ2C8wpfYe30BxinxzjJ6i6Mgd3I7rZhBfZzRsihRBa/569m70PY9/JfY2cYjURKoSMaNCcToO9UAf4NvoGufTlt811YPzX9nnGXQFv2Mu8WW6C9a5YHcYKnAdAPpkmxcsJyEhrOMB5cH19u9M1r1N80oCeMakvHFNeNlBpwEtK3Rqp8tBHakwGjbyDiV8s3tte6ZbI4e1EnbpsxxU+07Igk0QKyVcVBXYMAqbZtLIeNqKv/ioF73vjzKu/Ncp4nR3jQDnvlzY+NVZ8ckfE0yboGhAsKdJe6yi7wuY8R2PScGdYnK50Fs10NkEtSzdAYLDXoZ86J0wmxy9dmijYLvniTIkoxH1+r+w/QgCWVcqK/A6kPGlQF/7nw9SEkckFzweUdeA7chf6YZu3G27rcqCetqlJ/041L8lMWjXD58ktYLHyzrM8pDtv8AoPfKzdMDAAA="
+   },
+   "Metadata": {
+    "aws:cdk:path": "PrometheusCdkStack/CDKMetadata/Default"
+   },
+   "Condition": "CDKMetadataAvailable"
+  }
+ },
+ "Outputs": {
+  "AlbDnsName": {
+   "Description": "Open this in a browser (or curl it) to hit the app",
+   "Value": {
+    "Fn::GetAtt": [
+     "AppAlb4274DE9C",
+     "DNSName"
+    ]
+   }
+  },
+  "DbEndpoint": {
+   "Value": {
+    "Fn::GetAtt": [
+     "AppDbAE2CA689",
+     "Endpoint.Address"
+    ]
+   }
+  },
+  "DbSecretArn": {
+   "Description": "Generated DB credentials live here, not in code",
+   "Value": {
+    "Ref": "AppDbSecretAttachment08BE4D66"
+   }
+  },
+  "AlarmTopicArn": {
+   "Value": {
+    "Ref": "AlarmTopicD01E77F9"
+   }
+  },
+  "ClusterName": {
+   "Value": {
+    "Ref": "AppCluster99B78AC1"
+   }
+  }
+ },
+ "Conditions": {
+  "CDKMetadataAvailable": {
+   "Fn::Or": [
+    {
+     "Fn::Or": [
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "af-south-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-east-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-northeast-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-northeast-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-south-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-southeast-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-southeast-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ca-central-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "cn-north-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "cn-northwest-1"
+       ]
+      }
+     ]
+    },
+    {
+     "Fn::Or": [
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-central-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-north-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-south-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-west-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-west-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-west-3"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "il-central-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "me-central-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "me-south-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "sa-east-1"
+       ]
+      }
+     ]
+    },
+    {
+     "Fn::Or": [
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "us-east-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "us-east-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "us-west-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "us-west-2"
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

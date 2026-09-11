@@ -1,0 +1,19 @@
+{
+  "version": "36.0.0",
+  "files": {
+    "a4d3e21aefe43e57dc15b99dce0aedb0c468ca8115bc27d8b0a3a5394286b8e3": {
+      "source": {
+        "path": "PrometheusCdkStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "current_account-current_region": {
+          "bucketName": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}",
+          "objectKey": "a4d3e21aefe43e57dc15b99dce0aedb0c468ca8115bc27d8b0a3a5394286b8e3.json",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-file-publishing-role-${AWS::AccountId}-${AWS::Region}"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}
