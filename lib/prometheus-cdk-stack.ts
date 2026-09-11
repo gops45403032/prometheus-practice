@@ -11,17 +11,41 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as cw_actions from 'aws-cdk-lib/aws-cloudwatch-actions';
 
+/**
+ * Practice build of the "Prometheus" take-home architecture -- now using
+ * ECS on Fargate, matching the original answer doc exactly (an earlier
+ * revision of this stack substituted an EC2 Auto Scaling Group because
+ * Fargate has zero free tier; this version trades that saving back for
+ * fidelity to the actual submission).
+ *
+ * Cost notes vs. free tier:
+ *   - Fargate has NO free tier at all -- it bills per vCPU-second and
+ *     per GB-second of memory from the moment a task is RUNNING. Two
+ *     tasks at 0.25 vCPU / 0.5GB each run about $0.02-0.03/hour combined
+ *     in most regions -- trivial for a short test, covered by credits,
+ *     but unlike EC2 it never becomes free no matter how long it runs.
+ *   - The other two trade-offs from the EC2 version are kept for the
+ *     same reasons as before:
+ *       1. ONE NAT Gateway instead of one-per-AZ.
+ *       2. RDS Single-AZ instead of Multi-AZ (flip `multiAz` to `true`
+ *          for the "real" HA answer).
+ */
 export class PrometheusCdkStack extends cdk.Stack {
+  public readonly cluster: ecs.Cluster;
+  public readonly service: ecs.FargateService;
+
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    // ---- Context / knobs -------------------------------------------------
     const myIpCidr = this.node.tryGetContext('myIpCidr') ?? '0.0.0.0/0';
-    const alertEmail = this.node.tryGetContext('alertEmail');
+    const alertEmail = this.node.tryGetContext('alertEmail'); // optional
 
+    // ---- Networking --------------------------------------------------
     const vpc = new ec2.Vpc(this, 'PrometheusVpc', {
       ipAddresses: ec2.IpAddresses.cidr('10.0.0.0/16'),
       maxAzs: 2,
-      natGateways: 1,
+      natGateways: 1, // cost trade-off -- see class comment
       subnetConfiguration: [
         { name: 'public', subnetType: ec2.SubnetType.PUBLIC, cidrMask: 24 },
         { name: 'app-private', subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS, cidrMask: 24 },
@@ -29,6 +53,7 @@ export class PrometheusCdkStack extends cdk.Stack {
       ],
     });
 
+    // ---- Security groups, chained ALB -> app -> DB ---------------------
     const albSg = new ec2.SecurityGroup(this, 'AlbSg', {
       vpc,
       description: 'ALB: HTTP from my IP only',
@@ -50,11 +75,15 @@ export class PrometheusCdkStack extends cdk.Stack {
     });
     dbSg.addIngressRule(appSg, ec2.Port.tcp(3306), 'MySQL from app tier only');
 
+    // ---- ECS cluster + Fargate service ----------------------------------
     const cluster = new ecs.Cluster(this, 'AppCluster', {
       vpc,
       containerInsights: true,
     });
+    this.cluster = cluster;
 
+    // Task execution role: pulls the image, writes logs -- separate from
+    // the task role below, exactly like the answer doc calls for.
     const executionRole = new iam.Role(this, 'TaskExecutionRole', {
       assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
       managedPolicies: [
@@ -62,6 +91,9 @@ export class PrometheusCdkStack extends cdk.Stack {
       ],
     });
 
+    // Task role: what the running container itself is allowed to call.
+    // Empty/least-privilege on purpose -- add scoped permissions here
+    // (one secret, one S3 prefix) as the real app needs them.
     const taskRole = new iam.Role(this, 'TaskRole', {
       assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
     });
@@ -72,13 +104,16 @@ export class PrometheusCdkStack extends cdk.Stack {
     });
 
     const taskDef = new ecs.FargateTaskDefinition(this, 'AppTaskDef', {
-      cpu: 256,
+      cpu: 256, // 0.25 vCPU -- smallest Fargate size
       memoryLimitMiB: 512,
       executionRole,
       taskRole,
     });
 
     taskDef.addContainer('AppContainer', {
+      // Public demo image with a tiny built-in web server, 200s on any
+      // path. Swap for your own ECR image later -- that swap (plus the
+      // CI/CD pipeline that builds and pushes it) is a good next step.
       image: ecs.ContainerImage.fromRegistry('public.ecr.aws/nginx/nginx:latest'),
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'app', logGroup }),
       portMappings: [{ containerPort: 80 }],
@@ -87,21 +122,23 @@ export class PrometheusCdkStack extends cdk.Stack {
     const service = new ecs.FargateService(this, 'AppService', {
       cluster,
       taskDefinition: taskDef,
-      desiredCount: 2,
+      desiredCount: 2, // split across both AZs
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
       securityGroups: [appSg],
-      minHealthyPercent: 100,
+      minHealthyPercent: 100, // rolling deploys never drop below current capacity
       maxHealthyPercent: 200,
-      assignPublicIp: false,
+      assignPublicIp: false, // stays private; NAT gateway handles egress (pulling the image)
     });
 
     service.autoScaleTaskCount({ minCapacity: 2, maxCapacity: 8 }).scaleOnCpuUtilization('CpuTargetTracking', {
       targetUtilizationPercent: 50,
     });
+    this.service = service;
 
+    // ---- Entry point: ALB across both public subnets -------------------
     const alb = new elbv2.ApplicationLoadBalancer(this, 'AppAlb', {
       vpc,
-      internetFacing: true,
+      internetFacing: true, // set false + VPN/peering route for a truly "internal" app
       securityGroup: albSg,
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
     });
@@ -122,6 +159,7 @@ export class PrometheusCdkStack extends cdk.Stack {
       deregistrationDelay: cdk.Duration.seconds(30),
     });
 
+    // ---- Data tier: RDS MySQL, Single-AZ, isolated subnet ---------------
     const db = new rds.DatabaseInstance(this, 'AppDb', {
       engine: rds.DatabaseInstanceEngine.mysql({ version: rds.MysqlEngineVersion.VER_8_0 }),
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
@@ -129,15 +167,16 @@ export class PrometheusCdkStack extends cdk.Stack {
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [dbSg],
       credentials: rds.Credentials.fromGeneratedSecret('appdbadmin'),
-      multiAz: false,
+      multiAz: false, // flip to `true` for the "real" HA answer
       allocatedStorage: 20,
       storageEncrypted: true,
       deleteAutomatedBackups: true,
       backupRetention: cdk.Duration.days(1),
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // fine for a throwaway demo only
       deletionProtection: false,
     });
 
+    // ---- Monitoring: alarms -> SNS ------------------------------------
     const alarmTopic = new sns.Topic(this, 'AlarmTopic', { displayName: 'Prometheus practice app alarms' });
     if (alertEmail) {
       alarmTopic.addSubscription(new subscriptions.EmailSubscription(alertEmail));
@@ -175,6 +214,7 @@ export class PrometheusCdkStack extends cdk.Stack {
       alarmDescription: 'RDS CPU sustained above 80%',
     }).addAlarmAction(new cw_actions.SnsAction(alarmTopic));
 
+    // ---- Outputs -------------------------------------------------------
     new cdk.CfnOutput(this, 'AlbDnsName', {
       value: alb.loadBalancerDnsName,
       description: 'Open this in a browser (or curl it) to hit the app',

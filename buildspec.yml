@@ -1,0 +1,46 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO_URI
+      - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:-latest}
+      - echo Using image tag $IMAGE_TAG
+
+  build:
+    commands:
+      - echo Building the image...
+      - docker build -t $ECR_REPO_URI:$IMAGE_TAG ./app
+
+  post_build:
+    commands:
+      - echo Pushing the image...
+      - docker push $ECR_REPO_URI:$IMAGE_TAG
+
+      - echo Fetching current task definition...
+      - TASK_DEF_ARN=$(aws ecs describe-services --cluster $CLUSTER_NAME --services $SERVICE_NAME --query 'services[0].taskDefinition' --output text)
+      - aws ecs describe-task-definition --task-definition $TASK_DEF_ARN --query 'taskDefinition' > task-def.json
+
+      - echo Swapping in the new image...
+      - >
+        NEW_TASK_DEF=$(python3 -c "
+        import json
+        with open('task-def.json') as f:
+            td = json.load(f)
+        for c in td['containerDefinitions']:
+            if c['name'] == '$CONTAINER_NAME':
+                c['image'] = '$ECR_REPO_URI:$IMAGE_TAG'
+        for key in ['taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy']:
+            td.pop(key, None)
+        print(json.dumps(td))
+        ")
+      - echo "$NEW_TASK_DEF" > new-task-def.json
+
+      - echo Registering new task definition revision...
+      - NEW_TASK_DEF_ARN=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json --query 'taskDefinition.taskDefinitionArn' --output text)
+
+      - echo Updating the service to use it...
+      - aws ecs update-service --cluster $CLUSTER_NAME --service $SERVICE_NAME --task-definition $NEW_TASK_DEF_ARN --force-new-deployment
+
+      - echo Done. Deployed $ECR_REPO_URI:$IMAGE_TAG as $NEW_TASK_DEF_ARN
